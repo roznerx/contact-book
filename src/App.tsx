@@ -1,15 +1,9 @@
-import { useState, type ChangeEvent } from "react";
-
-interface Contact {
-  id: string;
-  name: string;
-  city: string;
-}
-
-interface NewContact {
-  name: string;
-  city: string;
-}
+import { useEffect, useState } from "react";
+import Form from "./components/Form";
+import type { Contact, NewContact } from "./interfaces/contacts";
+import CardFront from "./components/CardFront";
+import CardBack from "./components/CardBack";
+import Alert from "./components/Alert";
 
 const mockData = [
   { "id": "1", "name": "Alice Johnson", "city": "New York" },
@@ -27,139 +21,105 @@ const mockData = [
 export default function App() {
   const [contacts, setContacts] = useState<Contact[]>(mockData);
   const [newContact, setNewContact] = useState<NewContact>({ name: "", city: ""});
+  const [editedContact, setEditedContact] = useState<NewContact>({ name: "", city: "" });
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [edit, setEdit] = useState<string | undefined>(undefined);
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [alertMessage, setAlertMessage] = useState<string | undefined>(undefined);
+
+  const triggerAlert = (message: string) => {
+    setAlertMessage(message);
+    setShowAlert(true);
+  };
 
   const addContact = () => {
     if (contacts.find(c => c.name === newContact.name)) {
-      console.log("Already exists!");
+      triggerAlert("Already exists!");
+      return
+    };
+
+    if (!newContact.name|| !newContact.city) {
+      triggerAlert("Contact must have name and city info!");
       return
     };
 
     const id = crypto.randomUUID();
     setContacts(prev => [
       ...prev, { ...newContact, id }
-    ])
+    ]);
   };
 
   const editContact = (id: string) => {
-    setEdit(id);
-    setIsEditing(true);
-  }
+    const contactToEdit = contacts.find(c => c.id === id);
+
+    if (contactToEdit) {
+      setEditedContact({ name: contactToEdit.name, city: contactToEdit.city });
+      setEdit(id);
+      setIsEditing(true);
+    }
+  };
+
+  const deleteContact = (id: string) => {
+    setContacts(prev => prev.filter(
+      contact => contact.id !== id
+    ));
+
+    setEdit(undefined);
+    setIsEditing(false);
+  };
+
+  const saveContact = (id: string) => {
+    setContacts(prev =>
+      prev.map(c =>
+        c.id === id ? { ...c, ...editedContact } : c
+      )
+    );
+
+    setIsEditing(false);
+    setEdit(undefined);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEdit(undefined);
+    setEditedContact({ name: "", city: "" });
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowAlert(false), 3000);
+    return () => clearTimeout(timer);
+  }, [showAlert]); 
 
   return (
     <div className="p-8">
-      {/* Header */}
+      { showAlert && <Alert alertMessage={alertMessage} setShowAlert={setShowAlert} /> }
       <div className="pb-8 text-2xl">
         <h1 className="text-2xl">Contact Book</h1>
         <h3 className="text-xl">Keep track of where your friends live</h3>
       </div>
-      {/* Form */}
-      <div className="card card-side gap-4 p-8 bg-white border-black w-96 shadow-sm w-max">
-        <label className="input bg-white border-black">
-          <span className="label">Name:</span>
-          <input 
-            type="text" 
-            placeholder="URL" 
-            onChange={
-              (e: ChangeEvent<HTMLInputElement>) => setNewContact((prev) => ({ 
-                name: e.target.value, city: prev.city
-              }))
-            }
-          />
-        </label>
-        <label className="input bg-white border-black">
-          <span className="label">City:</span>
-          <input 
-            type="text" 
-            placeholder="URL" 
-            onChange={
-              (e: ChangeEvent<HTMLInputElement>) => setNewContact((prev) => ({ 
-                name: prev.city, city: e.target.value
-              }))
-            }
-          />
-        </label>
-        <button className="btn" onClick={() => addContact()}>Add contact</button>
-      </div>
-      {/* Contacts */}
+      <Form setNewContact={setNewContact} addContact={addContact} />
       <div className="pt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {
-          contacts.length > 0 ? contacts.map((c: Contact) => 
-            isEditing && c.id === edit ? 
-            (
-              <div key={c.id} className="card w-96 bg-white border-black w-96 shadow-sm card-md">
-                <div className="card-body">
-                  <label className="input bg-white border-black w-auto">
-                    <span className="label">Name:</span>
-                    <input 
-                      type="text" 
-                      placeholder="URL"
-                      value={c.name} 
-                      onChange={
-                        (e: ChangeEvent<HTMLInputElement>) => setNewContact((prev) => ({ 
-                          name: e.target.value, city: prev.city
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="input bg-white border-black w-auto">
-                    <span className="label">City:</span>
-                    <input 
-                      type="text" 
-                      placeholder="URL"
-                      value={c.city} 
-                      onChange={
-                        (e: ChangeEvent<HTMLInputElement>) => setNewContact((prev) => ({ 
-                          name: prev.city, city: e.target.value
-                        }))
-                      }
-                    />
-                  </label>
-                  <div className="justify-between card-actions pt-4">
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={() => editContact(c.id)}
-                    >
-                      Delete
-                    </button>
-                    <div className="flex row gap-2">
-                      <button 
-                        className="btn btn-outline"
-                        onClick={() => editContact(c.id)}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        className="btn btn-primary"
-                        onClick={() => editContact(c.id)}
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : 
-            (
-              <div key={c.id} className="card w-96 bg-white border-black w-96 shadow-sm card-md">
-                <div className="card-body">
-                  <h2 className="card-title">{c.name}</h2>
-                  <p>{c.city}</p>
-                  <div className="justify-end card-actions">
-                    <button 
-                      className="btn btn-primary"
-                      disabled={isEditing}
-                      onClick={() => editContact(c.id)}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          ) :
-          <></>
+          contacts.length > 0 
+            ? contacts.map((c: Contact) => 
+              isEditing && c.id === edit 
+                ? <CardBack
+                    key={c.id} 
+                    contact={c} 
+                    editedContact={editedContact} 
+                    setEditedContact={setEditedContact} 
+                    deleteContact={deleteContact} 
+                    cancelEdit={cancelEdit} 
+                    saveContact={saveContact} 
+                  />
+                : <CardFront 
+                    key={c.id} 
+                    contact={c} 
+                    isEditing={isEditing} 
+                    editContact={editContact} 
+                  />
+            ) 
+            : <></>
         }
       </div>
     </div>
