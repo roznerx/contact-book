@@ -28,7 +28,7 @@ export default function Form({ setNewContact, addContact }: FormProps) {
           placeholder="URL" 
           onChange={
             (e: ChangeEvent<HTMLInputElement>) => setNewContact((prev) => ({ 
-              name: prev.city, city: e.target.value
+              name: prev.name, city: e.target.value
             }))
           }
         />
